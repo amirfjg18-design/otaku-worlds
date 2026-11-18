@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import {
   ArrowRight,
   Check,
@@ -29,6 +30,21 @@ import type {
   StorePayload,
   StoreSettings,
 } from './data/types';
+import { ADMIN_EMAIL, auth } from './firebase';
+import {
+  createOrderInFirestore,
+  deleteOrderInFirestore,
+  deleteProductFromFirestore,
+  saveProductToFirestore,
+  saveStoreConfigToFirestore,
+  seedInitialStoreIfEmpty,
+  subscribeAdminOrders,
+  subscribeAdminPin,
+  subscribePublicStore,
+  syncAllProductsToFirestore,
+  syncDeliveryZonesToFirestore,
+  updateOrderStatusInFirestore,
+} from './services/storeFirestore';
 import { getAccentTheme } from './utils/accentTheme';
 
 type SortOption = 'featured' | 'price-asc' | 'price-desc';
@@ -71,6 +87,11 @@ export default function App() {
   const [orders, setOrders] = useState<StoreOrder[]>(initialStore.orders);
   const [saving, setSaving] = useState(false);
 
+  // Firebase Auth state
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const seededRef = useRef(false);
+
   // Storefront browsing state
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('All');
@@ -89,127 +110,174 @@ export default function App() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productEditorOpen, setProductEditorOpen] = useState(false);
 
-  // Load persisted store data from server on mount (gracefully skips on static hosts)
+  const isVerifiedAdmin =
+    authReady &&
+    Boolean(currentUser) &&
+    currentUser?.emailVerified === true &&
+    currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  // Monitor Firebase Auth state
   useEffect(() => {
-    let active = true;
-    fetch('/api/store')
-      .then((res) => {
-        const contentType = res.headers.get('content-type') || '';
-        if (!res.ok || !contentType.includes('application/json')) return null;
-        return res.json();
-      })
-      .then((data: StorePayload | null) => {
-        if (!active || !data || !data.settings || !Array.isArray(data.products)) {
-          return;
-        }
-        setSettings({
-          ...DEFAULT_STORE_PAYLOAD.settings,
-          ...data.settings,
-        });
-        setProducts(data.products);
-        setDeliveryZones(data.deliveryZones);
-        setOrders(data.orders || []);
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        } catch {
-          // Ignore storage quota errors
-        }
-      })
-      .catch(() => {
-        // Static hosting or offline fallback uses localStorage + defaults
-      });
-    return () => {
-      active = false;
-    };
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setAuthReady(true);
+    });
+    return () => unsub();
   }, []);
 
-  const persistStoreChanges = async (
-    nextSettings: StoreSettings,
-    nextProducts: Product[],
-    nextZones: DeliveryZone[],
-    nextOrders: StoreOrder[] = orders
-  ) => {
-    const cachePayload: StorePayload = {
-      settings: nextSettings,
-      products: nextProducts,
-      deliveryZones: nextZones,
-      orders: nextOrders,
-    };
+  // Subscribe to public Firestore storefront collections (live for all visitors)
+  useEffect(() => {
+    const unsub = subscribePublicStore(
+      (remoteConfig) => {
+        if (!remoteConfig) return;
+        setSettings((prev) => ({
+          ...DEFAULT_STORE_PAYLOAD.settings,
+          ...remoteConfig,
+          ownerPin: prev.ownerPin,
+        }));
+      },
+      (remoteProducts) => {
+        if (!remoteProducts) return;
+        setProducts(remoteProducts);
+      },
+      (remoteZones) => {
+        if (!remoteZones) return;
+        setDeliveryZones(remoteZones);
+      }
+    );
+    return () => unsub();
+  }, []);
+
+  // Cache storefront locally for fast initial paint
+  useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cachePayload));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          settings: { ...settings, ownerPin: '1110' },
+          products,
+          deliveryZones,
+          orders: [],
+        })
+      );
     } catch {
       // Ignore storage quota errors
     }
+  }, [settings, products, deliveryZones]);
 
+  // Seed Firestore once if empty when owner signs in + attach admin-only listeners
+  useEffect(() => {
+    if (!isVerifiedAdmin) {
+      setOrders([]);
+      return;
+    }
+
+    if (!seededRef.current) {
+      seededRef.current = true;
+      void seedInitialStoreIfEmpty(
+        DEFAULT_STORE_PAYLOAD.settings,
+        DEFAULT_STORE_PAYLOAD.products,
+        DEFAULT_STORE_PAYLOAD.deliveryZones
+      );
+    }
+
+    const unsubOrders = subscribeAdminOrders((remoteOrders) => {
+      setOrders(remoteOrders);
+    });
+    const unsubPin = subscribeAdminPin((remotePin) => {
+      setSettings((prev) => ({ ...prev, ownerPin: remotePin }));
+    });
+
+    return () => {
+      unsubOrders();
+      unsubPin();
+    };
+  }, [isVerifiedAdmin]);
+
+  const handleUpdateSettings = async (next: StoreSettings) => {
+    setSettings(next);
+    if (!isVerifiedAdmin) return;
     setSaving(true);
     try {
-      await fetch('/api/store', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settings: nextSettings,
-          products: nextProducts,
-          deliveryZones: nextZones,
-        }),
-      });
-    } catch {
-      // Cached locally even if server is temporarily unreachable
+      await saveStoreConfigToFirestore(next);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleUpdateSettings = (next: StoreSettings) => {
-    setSettings(next);
-    void persistStoreChanges(next, products, deliveryZones);
-  };
-
-  const handleUpdateProducts = (next: Product[]) => {
+  const handleUpdateProducts = async (next: Product[]) => {
     setProducts(next);
-    void persistStoreChanges(settings, next, deliveryZones);
+    if (!isVerifiedAdmin) return;
+    setSaving(true);
+    try {
+      await syncAllProductsToFirestore(next);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleUpdateDeliveryZones = (next: DeliveryZone[]) => {
+  const handleUpdateDeliveryZones = async (next: DeliveryZone[]) => {
     setDeliveryZones(next);
-    void persistStoreChanges(settings, products, next);
+    if (!isVerifiedAdmin) return;
+    setSaving(true);
+    try {
+      await syncDeliveryZonesToFirestore(next);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSaveSingleProduct = (saved: Product) => {
-    const exists = products.some((p) => p.id === saved.id);
-    const nextProducts = exists
-      ? products.map((p) => (p.id === saved.id ? saved : p))
-      : [saved, ...products];
+  const handleSaveSingleProduct = async (saved: Product) => {
+    const existingIndex = products.findIndex((p) => p.id === saved.id);
+    const nextProducts =
+      existingIndex >= 0
+        ? products.map((p) => (p.id === saved.id ? saved : p))
+        : [saved, ...products];
+    setProducts(nextProducts);
     setProductEditorOpen(false);
     setEditingProduct(null);
-    handleUpdateProducts(nextProducts);
+
+    if (!isVerifiedAdmin) return;
+    setSaving(true);
+    try {
+      if (existingIndex >= 0) {
+        await saveProductToFirestore(saved, existingIndex);
+      } else {
+        await syncAllProductsToFirestore(nextProducts);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     const nextProducts = products.filter((p) => p.id !== productId);
-    handleUpdateProducts(nextProducts);
+    setProducts(nextProducts);
+    if (!isVerifiedAdmin) return;
+    setSaving(true);
+    try {
+      await deleteProductFromFirestore(productId);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleResetDefaults = async () => {
     setSettings(DEFAULT_STORE_PAYLOAD.settings);
     setProducts(DEFAULT_STORE_PAYLOAD.products);
     setDeliveryZones(DEFAULT_STORE_PAYLOAD.deliveryZones);
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ ...DEFAULT_STORE_PAYLOAD, orders })
-    );
+    if (!isVerifiedAdmin) return;
+    setSaving(true);
     try {
-      const res = await fetch('/api/store/reset', { method: 'POST' });
-      const contentType = res.headers.get('content-type') || '';
-      if (res.ok && contentType.includes('application/json')) {
-        const data = (await res.json()) as StorePayload;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      }
-    } catch {
-      // Already reset locally for static hosting
+      await saveStoreConfigToFirestore(DEFAULT_STORE_PAYLOAD.settings);
+      await syncAllProductsToFirestore(DEFAULT_STORE_PAYLOAD.products);
+      await syncDeliveryZonesToFirestore(DEFAULT_STORE_PAYLOAD.deliveryZones);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleImportPayload = (imported: Partial<StorePayload>) => {
+  const handleImportPayload = async (imported: Partial<StorePayload>) => {
     const nextSettings = imported.settings
       ? { ...DEFAULT_STORE_PAYLOAD.settings, ...imported.settings }
       : settings;
@@ -223,60 +291,37 @@ export default function App() {
     setSettings(nextSettings);
     setProducts(nextProducts);
     setDeliveryZones(nextZones);
-    void persistStoreChanges(nextSettings, nextProducts, nextZones);
+
+    if (!isVerifiedAdmin) return;
+    setSaving(true);
+    try {
+      await saveStoreConfigToFirestore(nextSettings);
+      await syncAllProductsToFirestore(nextProducts);
+      await syncDeliveryZonesToFirestore(nextZones);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSubmitOrder = async (order: StoreOrder) => {
-    const nextOrders = [order, ...orders];
-    setOrders(nextOrders);
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ settings, products, deliveryZones, orders: nextOrders })
-      );
-    } catch {
-      // Ignore storage quota errors
-    }
-    try {
-      await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(order),
-      });
-    } catch {
-      // Saved locally
-    }
+    await createOrderInFirestore(order);
   };
 
   const handleUpdateOrderStatus = async (
     orderId: string,
     status: OrderStatus
   ) => {
-    const nextOrders = orders.map((o) =>
-      o.orderId === orderId ? { ...o, status } : o
+    setOrders((prev) =>
+      prev.map((o) => (o.orderId === orderId ? { ...o, status } : o))
     );
-    setOrders(nextOrders);
-    try {
-      await fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-    } catch {
-      // Local state updated
-    }
+    if (!isVerifiedAdmin) return;
+    await updateOrderStatusInFirestore(orderId, status);
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    const nextOrders = orders.filter((o) => o.orderId !== orderId);
-    setOrders(nextOrders);
-    try {
-      await fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
-        method: 'DELETE',
-      });
-    } catch {
-      // Local state updated
-    }
+    setOrders((prev) => prev.filter((o) => o.orderId !== orderId));
+    if (!isVerifiedAdmin) return;
+    await deleteOrderInFirestore(orderId);
   };
 
   const openEditorTab = (tab: EditorTab) => {
@@ -304,16 +349,16 @@ export default function App() {
   );
 
   const filteredProducts = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const queryText = searchQuery.trim().toLowerCase();
     const list = products.filter((p) => {
       const matchesCategory =
         activeCategory === 'All' || p.category === activeCategory;
       const matchesQuery =
-        !query ||
-        p.name.toLowerCase().includes(query) ||
-        p.category.toLowerCase().includes(query) ||
-        p.origin.toLowerCase().includes(query) ||
-        p.shortDesc.toLowerCase().includes(query);
+        !queryText ||
+        p.name.toLowerCase().includes(queryText) ||
+        p.category.toLowerCase().includes(queryText) ||
+        p.origin.toLowerCase().includes(queryText) ||
+        p.shortDesc.toLowerCase().includes(queryText);
       return matchesCategory && matchesQuery;
     });
 
@@ -439,12 +484,12 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3 text-xs">
               <span className="font-semibold text-white">
-                Store Edit Mode
+                Store Edit Mode (Live Cloud Sync)
               </span>
               <span className="text-zinc-400">
                 {saving
-                  ? 'Saving changes...'
-                  : 'Click any product or section to edit directly'}
+                  ? 'Saving to cloud...'
+                  : 'All edits publish live for every visitor'}
               </span>
             </div>
 
@@ -1028,10 +1073,11 @@ export default function App() {
         onSubmitOrder={handleSubmitOrder}
       />
 
-      {/* Owner PIN Unlock Modal */}
+      {/* Owner Auth & PIN Unlock Modal */}
       <PinUnlockModal
         isOpen={pinModalOpen}
         expectedPin={settings.ownerPin}
+        currentUser={currentUser}
         onClose={() => setPinModalOpen(false)}
         onUnlocked={() => {
           setPinModalOpen(false);
@@ -1052,17 +1098,31 @@ export default function App() {
         saving={saving}
         onChangeTab={setEditorTab}
         onClose={() => setEditorDrawerOpen(false)}
-        onUpdateSettings={handleUpdateSettings}
-        onUpdateProducts={handleUpdateProducts}
-        onUpdateDeliveryZones={handleUpdateDeliveryZones}
+        onUpdateSettings={(next) => {
+          void handleUpdateSettings(next);
+        }}
+        onUpdateProducts={(next) => {
+          void handleUpdateProducts(next);
+        }}
+        onUpdateDeliveryZones={(next) => {
+          void handleUpdateDeliveryZones(next);
+        }}
         onOpenProductEditor={(prod) => {
           setEditingProduct(prod);
           setProductEditorOpen(true);
         }}
-        onUpdateOrderStatus={handleUpdateOrderStatus}
-        onDeleteOrder={handleDeleteOrder}
-        onResetDefaults={handleResetDefaults}
-        onImportPayload={handleImportPayload}
+        onUpdateOrderStatus={(id, status) => {
+          void handleUpdateOrderStatus(id, status);
+        }}
+        onDeleteOrder={(id) => {
+          void handleDeleteOrder(id);
+        }}
+        onResetDefaults={() => {
+          void handleResetDefaults();
+        }}
+        onImportPayload={(payload) => {
+          void handleImportPayload(payload);
+        }}
       />
 
       {/* Add / Edit Single Product Modal */}
@@ -1074,7 +1134,9 @@ export default function App() {
           setProductEditorOpen(false);
           setEditingProduct(null);
         }}
-        onSave={handleSaveSingleProduct}
+        onSave={(saved) => {
+          void handleSaveSingleProduct(saved);
+        }}
       />
     </div>
   );

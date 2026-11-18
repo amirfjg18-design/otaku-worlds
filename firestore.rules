@@ -1,0 +1,230 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'amirfjg18@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // --- Validation Helpers ---
+    function isValidStoreConfig(data) {
+      return data.keys().hasAll([
+        'brandName', 'announcementText', 'showAnnouncement', 'instagramHandle',
+        'instagramUrl', 'whatsappNumber', 'city', 'accentColor', 'heroKicker',
+        'heroTitle', 'heroDescription', 'heroCtaText', 'heroImage',
+        'catalogKicker', 'catalogTitle', 'aboutKicker', 'aboutTitle',
+        'aboutParagraph1', 'aboutParagraph2', 'footerTagline',
+        'freeKenitraThreshold', 'freeNationalThreshold', 'trustPillars', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'brandName', 'announcementText', 'showAnnouncement', 'instagramHandle',
+        'instagramUrl', 'whatsappNumber', 'city', 'accentColor', 'heroKicker',
+        'heroTitle', 'heroDescription', 'heroCtaText', 'heroImage',
+        'catalogKicker', 'catalogTitle', 'aboutKicker', 'aboutTitle',
+        'aboutParagraph1', 'aboutParagraph2', 'footerTagline',
+        'freeKenitraThreshold', 'freeNationalThreshold', 'trustPillars', 'updatedAt'
+      ]) &&
+      data.brandName is string && data.brandName.size() >= 1 && data.brandName.size() <= 80 &&
+      data.announcementText is string && data.announcementText.size() <= 200 &&
+      data.showAnnouncement is bool &&
+      data.instagramHandle is string && data.instagramHandle.size() <= 60 &&
+      data.instagramUrl is string && data.instagramUrl.size() <= 250 &&
+      data.whatsappNumber is string && data.whatsappNumber.size() <= 30 &&
+      data.city is string && data.city.size() >= 1 && data.city.size() <= 60 &&
+      data.accentColor in ['crimson', 'cobalt', 'emerald', 'amber', 'ink'] &&
+      data.heroKicker is string && data.heroKicker.size() <= 120 &&
+      data.heroTitle is string && data.heroTitle.size() >= 1 && data.heroTitle.size() <= 160 &&
+      data.heroDescription is string && data.heroDescription.size() <= 600 &&
+      data.heroCtaText is string && data.heroCtaText.size() >= 1 && data.heroCtaText.size() <= 60 &&
+      data.heroImage is string && data.heroImage.size() <= 450000 &&
+      data.catalogKicker is string && data.catalogKicker.size() <= 120 &&
+      data.catalogTitle is string && data.catalogTitle.size() >= 1 && data.catalogTitle.size() <= 120 &&
+      data.aboutKicker is string && data.aboutKicker.size() <= 120 &&
+      data.aboutTitle is string && data.aboutTitle.size() >= 1 && data.aboutTitle.size() <= 160 &&
+      data.aboutParagraph1 is string && data.aboutParagraph1.size() <= 800 &&
+      data.aboutParagraph2 is string && data.aboutParagraph2.size() <= 800 &&
+      data.footerTagline is string && data.footerTagline.size() <= 200 &&
+      data.freeKenitraThreshold is number && data.freeKenitraThreshold >= 0 && data.freeKenitraThreshold <= 100000 &&
+      data.freeNationalThreshold is number && data.freeNationalThreshold >= 0 && data.freeNationalThreshold <= 100000 &&
+      data.trustPillars is list && data.trustPillars.size() >= 1 && data.trustPillars.size() <= 8 &&
+      data.trustPillars[0] is map &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidStorePrivate(data) {
+      return data.keys().hasAll(['ownerPin', 'updatedAt']) &&
+        data.keys().hasOnly(['ownerPin', 'updatedAt']) &&
+        data.ownerPin is string && data.ownerPin.size() >= 1 && data.ownerPin.size() <= 20 &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidProduct(data, productId) {
+      return data.keys().hasAll([
+        'id', 'sku', 'name', 'category', 'origin', 'priceMad', 'image',
+        'shortDesc', 'description', 'variants', 'dimensions', 'material',
+        'stockCount', 'availabilityLabel', 'sortOrder', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'id', 'sku', 'name', 'category', 'origin', 'priceMad', 'image',
+        'shortDesc', 'description', 'variants', 'dimensions', 'material',
+        'stockCount', 'availabilityLabel', 'sortOrder', 'updatedAt'
+      ]) &&
+      data.id == productId &&
+      data.sku is string && data.sku.size() <= 40 &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 160 &&
+      data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+      data.origin is string && data.origin.size() <= 80 &&
+      data.priceMad is number && data.priceMad >= 0 && data.priceMad <= 1000000 &&
+      data.image is string && data.image.size() <= 450000 &&
+      data.shortDesc is string && data.shortDesc.size() <= 300 &&
+      data.description is string && data.description.size() <= 2000 &&
+      data.variants is list && data.variants.size() >= 1 && data.variants.size() <= 20 &&
+      data.variants[0] is string &&
+      data.dimensions is string && data.dimensions.size() <= 100 &&
+      data.material is string && data.material.size() <= 120 &&
+      data.stockCount is int && data.stockCount >= 0 && data.stockCount <= 100000 &&
+      data.availabilityLabel is string && data.availabilityLabel.size() <= 80 &&
+      data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 100000 &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidDeliveryZone(data, zoneId) {
+      return data.keys().hasAll(['id', 'city', 'method', 'eta', 'feeMad', 'sortOrder']) &&
+        data.keys().hasOnly(['id', 'city', 'method', 'eta', 'feeMad', 'sortOrder']) &&
+        data.id == zoneId &&
+        data.city is string && data.city.size() >= 1 && data.city.size() <= 120 &&
+        data.method is string && data.method.size() <= 140 &&
+        data.eta is string && data.eta.size() <= 60 &&
+        data.feeMad is number && data.feeMad >= 0 && data.feeMad <= 50000 &&
+        data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 10000;
+    }
+
+    function isValidOrderCreate(data, orderId) {
+      return data.keys().hasAll([
+        'orderId', 'status', 'customerName', 'phone', 'cityLabel', 'address',
+        'instagramHandle', 'items', 'subtotalMad', 'shippingFeeMad', 'totalMad',
+        'eta', 'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'orderId', 'status', 'customerName', 'phone', 'cityLabel', 'address',
+        'instagramHandle', 'items', 'subtotalMad', 'shippingFeeMad', 'totalMad',
+        'eta', 'createdAt'
+      ]) &&
+      data.orderId == orderId &&
+      data.status == 'Pending' &&
+      data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 120 &&
+      data.phone is string && data.phone.size() >= 4 && data.phone.size() <= 40 &&
+      data.cityLabel is string && data.cityLabel.size() >= 1 && data.cityLabel.size() <= 120 &&
+      data.address is string && data.address.size() >= 1 && data.address.size() <= 300 &&
+      data.instagramHandle is string && data.instagramHandle.size() <= 80 &&
+      data.items is list && data.items.size() >= 1 && data.items.size() <= 30 &&
+      data.items[0] is map &&
+      data.subtotalMad is number && data.subtotalMad >= 0 && data.subtotalMad <= 10000000 &&
+      data.shippingFeeMad is number && data.shippingFeeMad >= 0 && data.shippingFeeMad <= 50000 &&
+      data.totalMad is number && data.totalMad >= 0 && data.totalMad <= 10050000 &&
+      data.eta is string && data.eta.size() <= 60 &&
+      data.createdAt == request.time;
+    }
+
+    function isValidOrderUpdate(nextData, prevData) {
+      return nextData.keys().hasAll([
+        'orderId', 'status', 'customerName', 'phone', 'cityLabel', 'address',
+        'instagramHandle', 'items', 'subtotalMad', 'shippingFeeMad', 'totalMad',
+        'eta', 'createdAt'
+      ]) &&
+      nextData.keys().hasOnly([
+        'orderId', 'status', 'customerName', 'phone', 'cityLabel', 'address',
+        'instagramHandle', 'items', 'subtotalMad', 'shippingFeeMad', 'totalMad',
+        'eta', 'createdAt'
+      ]) &&
+      nextData.status in ['Pending', 'Confirmed', 'Shipped', 'Delivered'] &&
+      nextData.createdAt == prevData.createdAt &&
+      nextData.orderId == prevData.orderId;
+    }
+
+    // --- Collection Rules ---
+
+    // Startup connection check document
+    match /test/connection {
+      allow get: if true;
+    }
+
+    // Public storefront configuration (singleton document: store/config)
+    match /store/{docId} {
+      allow get: if isValidId(docId) && docId == 'config';
+      allow create, update: if isAdmin() && isValidId(docId) && docId == 'config' &&
+        isValidStoreConfig(incoming()) && incoming().updatedAt == request.time;
+    }
+
+    // Admin-only private settings (e.g. PIN)
+    match /storePrivate/{docId} {
+      allow get: if isAdmin() && isValidId(docId);
+      allow create, update: if isAdmin() && isValidId(docId) &&
+        isValidStorePrivate(incoming()) && incoming().updatedAt == request.time;
+    }
+
+    // Admin allowlist docs (bootstrapped email + optional extra admins)
+    match /admins/{uid} {
+      allow get: if isAdmin() && isValidId(uid);
+    }
+
+    // Public catalog of products
+    match /products/{productId} {
+      allow list: if true;
+      allow get: if isValidId(productId);
+      allow create: if isAdmin() && isValidId(productId) &&
+        isValidProduct(incoming(), productId) && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(productId) &&
+        isValidProduct(incoming(), productId) && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(productId);
+    }
+
+    // Public Morocco delivery zones
+    match /deliveryZones/{zoneId} {
+      allow list: if true;
+      allow get: if isValidId(zoneId);
+      allow create, update: if isAdmin() && isValidId(zoneId) &&
+        isValidDeliveryZone(incoming(), zoneId);
+      allow delete: if isAdmin() && isValidId(zoneId);
+    }
+
+    // Customer Cash-on-Delivery orders (strictly admin-only reads)
+    match /orders/{orderId} {
+      allow list: if isAdmin();
+      allow get: if isAdmin() && isValidId(orderId);
+      allow create: if isValidId(orderId) && isValidOrderCreate(incoming(), orderId);
+      allow update: if isAdmin() && isValidId(orderId) &&
+        isValidOrderUpdate(incoming(), existing()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isAdmin() && isValidId(orderId);
+    }
+  }
+}

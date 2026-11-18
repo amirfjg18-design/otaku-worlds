@@ -1,0 +1,183 @@
+{
+  "entities": {
+    "StoreConfig": {
+      "title": "StoreConfig",
+      "description": "Public storefront branding, hero banner, trust pillars, about copy, and free shipping thresholds.",
+      "type": "object",
+      "properties": {
+        "brandName": { "type": "string", "maxLength": 80 },
+        "announcementText": { "type": "string", "maxLength": 200 },
+        "showAnnouncement": { "type": "boolean" },
+        "instagramHandle": { "type": "string", "maxLength": 60 },
+        "instagramUrl": { "type": "string", "maxLength": 250 },
+        "whatsappNumber": { "type": "string", "maxLength": 30 },
+        "city": { "type": "string", "maxLength": 60 },
+        "accentColor": { "type": "string", "enum": ["crimson", "cobalt", "emerald", "amber", "ink"] },
+        "heroKicker": { "type": "string", "maxLength": 120 },
+        "heroTitle": { "type": "string", "maxLength": 160 },
+        "heroDescription": { "type": "string", "maxLength": 600 },
+        "heroCtaText": { "type": "string", "maxLength": 60 },
+        "heroImage": { "type": "string", "maxLength": 450000 },
+        "catalogKicker": { "type": "string", "maxLength": 120 },
+        "catalogTitle": { "type": "string", "maxLength": 120 },
+        "aboutKicker": { "type": "string", "maxLength": 120 },
+        "aboutTitle": { "type": "string", "maxLength": 160 },
+        "aboutParagraph1": { "type": "string", "maxLength": 800 },
+        "aboutParagraph2": { "type": "string", "maxLength": 800 },
+        "footerTagline": { "type": "string", "maxLength": 200 },
+        "freeKenitraThreshold": { "type": "number" },
+        "freeNationalThreshold": { "type": "number" },
+        "trustPillars": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "brandName",
+        "announcementText",
+        "showAnnouncement",
+        "instagramHandle",
+        "instagramUrl",
+        "whatsappNumber",
+        "city",
+        "accentColor",
+        "heroKicker",
+        "heroTitle",
+        "heroDescription",
+        "heroCtaText",
+        "heroImage",
+        "catalogKicker",
+        "catalogTitle",
+        "aboutKicker",
+        "aboutTitle",
+        "aboutParagraph1",
+        "aboutParagraph2",
+        "footerTagline",
+        "freeKenitraThreshold",
+        "freeNationalThreshold",
+        "trustPillars",
+        "updatedAt"
+      ]
+    },
+    "StorePrivate": {
+      "title": "StorePrivate",
+      "description": "Private owner preferences such as optional UI unlock PIN.",
+      "type": "object",
+      "properties": {
+        "ownerPin": { "type": "string", "maxLength": 20 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerPin", "updatedAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Storefront catalog product item.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "sku": { "type": "string", "maxLength": 40 },
+        "name": { "type": "string", "maxLength": 160 },
+        "category": { "type": "string", "maxLength": 60 },
+        "origin": { "type": "string", "maxLength": 80 },
+        "priceMad": { "type": "number" },
+        "image": { "type": "string", "maxLength": 450000 },
+        "shortDesc": { "type": "string", "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "variants": { "type": "array" },
+        "dimensions": { "type": "string", "maxLength": 100 },
+        "material": { "type": "string", "maxLength": 120 },
+        "stockCount": { "type": "integer" },
+        "availabilityLabel": { "type": "string", "maxLength": 80 },
+        "sortOrder": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "sku",
+        "name",
+        "category",
+        "origin",
+        "priceMad",
+        "image",
+        "shortDesc",
+        "description",
+        "variants",
+        "dimensions",
+        "material",
+        "stockCount",
+        "availabilityLabel",
+        "sortOrder",
+        "updatedAt"
+      ]
+    },
+    "DeliveryZone": {
+      "title": "DeliveryZone",
+      "description": "Moroccan shipping zone with courier method, ETA, and fee in MAD.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "city": { "type": "string", "maxLength": 120 },
+        "method": { "type": "string", "maxLength": 140 },
+        "eta": { "type": "string", "maxLength": 60 },
+        "feeMad": { "type": "number" },
+        "sortOrder": { "type": "integer" }
+      },
+      "required": ["id", "city", "method", "eta", "feeMad", "sortOrder"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer Cash-on-Delivery order with protected PII.",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "maxLength": 40 },
+        "status": { "type": "string", "enum": ["Pending", "Confirmed", "Shipped", "Delivered"] },
+        "customerName": { "type": "string", "maxLength": 120 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "cityLabel": { "type": "string", "maxLength": 120 },
+        "address": { "type": "string", "maxLength": 300 },
+        "instagramHandle": { "type": "string", "maxLength": 80 },
+        "items": { "type": "array" },
+        "subtotalMad": { "type": "number" },
+        "shippingFeeMad": { "type": "number" },
+        "totalMad": { "type": "number" },
+        "eta": { "type": "string", "maxLength": 60 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "orderId",
+        "status",
+        "customerName",
+        "phone",
+        "cityLabel",
+        "address",
+        "instagramHandle",
+        "items",
+        "subtotalMad",
+        "shippingFeeMad",
+        "totalMad",
+        "eta",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/store/{docId}": {
+      "schema": { "$ref": "#/entities/StoreConfig" },
+      "description": "Public storefront configuration document (store/config)."
+    },
+    "/storePrivate/{docId}": {
+      "schema": { "$ref": "#/entities/StorePrivate" },
+      "description": "Admin-only private owner preferences."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Catalog of anime collectibles, streetwear, and Chinese imports."
+    },
+    "/deliveryZones/{zoneId}": {
+      "schema": { "$ref": "#/entities/DeliveryZone" },
+      "description": "Delivery regions and Cash-on-Delivery tariffs across Morocco."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer Cash-on-Delivery orders (admin-readable only)."
+    }
+  }
+}

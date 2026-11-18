@@ -77,7 +77,7 @@ export function OwnerEditorDrawer({
     if (!file) return;
     setHeroUploading(true);
     try {
-      const dataUrl = await compressImageFile(file, 1400, 0.85);
+      const dataUrl = await compressImageFile(file, 900, 0.72);
       onUpdateSettings({ ...settings, heroImage: dataUrl });
     } finally {
       setHeroUploading(false);
