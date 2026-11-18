@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: otaku-world
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: NODE_ENV=production node server.ts
+    envVars:
+      - key: NODE_ENV
+        value: production

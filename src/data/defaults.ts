@@ -1,0 +1,242 @@
+import type {
+  DeliveryZone,
+  Product,
+  StorePayload,
+  StoreSettings,
+} from './types';
+
+export const PRESET_IMAGES: { label: string; url: string }[] = [
+  {
+    label: 'Boutique Shelf Showcase',
+    url: '/src/assets/images/hero_anime_showcase_1794897105447.jpg',
+  },
+  {
+    label: 'Anime Warrior Figure',
+    url: '/src/assets/images/product_anime_figure_1794897106183.jpg',
+  },
+  {
+    label: 'Chinese Dragon Tea Set',
+    url: '/src/assets/images/product_china_tea_dragon_1794897106078.jpg',
+  },
+  {
+    label: 'Kanji Streetwear Hoodie',
+    url: '/src/assets/images/product_anime_hoodie_1794897107062.jpg',
+  },
+  {
+    label: 'Mini Katana & Sakura Lamp',
+    url: '/src/assets/images/product_katana_lamp_1794897107152.jpg',
+  },
+  {
+    label: 'China Mecha & Mechanical Keyboard',
+    url: '/src/assets/images/product_china_mech_desk_1794897107947.jpg',
+  },
+];
+
+export const DEFAULT_SETTINGS: StoreSettings = {
+  brandName: 'ANIME STORE MA',
+  announcementText:
+    'Kenitra Local Pickup & Cash on Delivery across Morocco',
+  showAnnouncement: true,
+  instagramHandle: '@anime.store.ma',
+  instagramUrl: 'https://www.instagram.com/anime.store.ma/',
+  whatsappNumber: '',
+  city: 'Kenitra',
+  accentColor: 'crimson',
+  heroKicker: 'Kenitra, Morocco · @anime.store.ma',
+  heroTitle: 'Anime Collectibles & Curated China Imports',
+  heroDescription:
+    'Scale figures, heavyweight anime apparel, display katanas, and direct Chinese studio imports—inspected in Kenitra and shipped nationwide with Cash on Delivery.',
+  heroCtaText: 'Browse Catalog',
+  heroImage: '/src/assets/images/hero_anime_showcase_1794897105447.jpg',
+  catalogKicker: 'Kenitra Ready Stock · MAD Pricing',
+  catalogTitle: 'Curated Storefront Catalog',
+  aboutKicker: 'About Anime Store MA · Kenitra',
+  aboutTitle: 'Hand-Checked in Kenitra, Delivered Across Morocco',
+  aboutParagraph1:
+    'Every anime figure, heavyweight hoodie, and Chinese import arriving at our Kenitra studio is unpacked, inspected for sculpt and finish quality, and safely cushioned before courier dispatch.',
+  aboutParagraph2:
+    'Looking for a specific figure, desk setup piece, or bulk China import not listed in the current drop? Message us on Instagram with a reference photo and we will quote it in MAD.',
+  footerTagline:
+    'Kenitra, Morocco · Anime Collectibles & China Imports · Cash on Delivery (MAD)',
+  freeKenitraThreshold: 300,
+  freeNationalThreshold: 600,
+  ownerPin: '1110',
+  trustPillars: [
+    {
+      title: 'Kenitra Local Pickup',
+      subtitle: 'Free same-day hand-off in Centre Ville & Bir Rami',
+    },
+    {
+      title: '24–48h All Morocco',
+      subtitle: 'Tracked shipping to Rabat, Casablanca, Tanger & beyond',
+    },
+    {
+      title: 'Cash on Delivery',
+      subtitle: 'Inspect your package and pay in MAD upon arrival',
+    },
+    {
+      title: 'Direct China Sourcing',
+      subtitle: 'Custom figure or desk setup requests via IG DM',
+    },
+  ],
+};
+
+export const DEFAULT_DELIVERY_ZONES: DeliveryZone[] = [
+  {
+    id: 'kenitra-pickup',
+    city: 'Kenitra (Local Pickup)',
+    method: 'Centre Ville / Bir Rami Hand-off',
+    eta: 'Same Day',
+    feeMad: 0,
+  },
+  {
+    id: 'kenitra-courier',
+    city: 'Kenitra (Home Delivery)',
+    method: 'Direct Local Courier · COD',
+    eta: 'Same Day / 24h',
+    feeMad: 15,
+  },
+  {
+    id: 'rabat-sale',
+    city: 'Rabat / Salé / Témara',
+    method: 'Express Courier · Cash on Delivery',
+    eta: '24 Hours',
+    feeMad: 25,
+  },
+  {
+    id: 'casablanca-north',
+    city: 'Casablanca / Tanger / Meknès / Fès',
+    method: 'Amana / Ozoon · Cash on Delivery',
+    eta: '24–48 Hours',
+    feeMad: 35,
+  },
+  {
+    id: 'other-morocco',
+    city: 'Marrakech / Agadir / Oujda / Other Cities',
+    method: 'Nationwide Parcel · Cash on Delivery',
+    eta: '48 Hours',
+    feeMad: 35,
+  },
+];
+
+export const DEFAULT_PRODUCTS: Product[] = [
+  {
+    id: 'shadow-ronin-figure',
+    sku: 'ASM-FIG-014',
+    name: 'Shadow Ronin Scale Figure',
+    category: 'Anime Figures',
+    origin: 'Tokyo Studio Edition',
+    priceMad: 420,
+    image: '/src/assets/images/product_anime_figure_1794897106183.jpg',
+    shortDesc:
+      '24 cm dynamic katana pose with matte cloak sculpting and collector box.',
+    description:
+      'High-detail PVC and ABS scale collectible featuring layered armor plating, metallic blade finish, and an interlocking display base. Inspected in Kenitra before shipment to guarantee clean paintwork and intact packaging.',
+    variants: ['Standard Box', 'Collector Acrylic Case'],
+    dimensions: '24 × 18 × 15 cm',
+    material: 'High-density PVC / ABS',
+    stockCount: 6,
+    availabilityLabel: 'In Stock · Kenitra',
+  },
+  {
+    id: 'dragon-gongfu-tea-set',
+    sku: 'ASM-CHN-028',
+    name: 'Embossed Dragon Gongfu Tea Set',
+    category: 'China Imports',
+    origin: 'Dehua Ceramic Import',
+    priceMad: 340,
+    image: '/src/assets/images/product_china_tea_dragon_1794897106078.jpg',
+    shortDesc:
+      'Matte obsidian exterior with crimson glaze interior and solid bamboo tray.',
+    description:
+      'Imported directly from Fujian ceramic workshops. Includes one lidded gaiwan, sharing pitcher, tea canister, six tasting cups with embossed dragon relief, and a slotted drainage bamboo tray.',
+    variants: ['Full 10-Piece Set', 'Travel Pouch Edition'],
+    dimensions: '32 × 22 × 9 cm',
+    material: 'Matte Black Stoneware & Bamboo',
+    stockCount: 4,
+    availabilityLabel: 'Limited Batch',
+  },
+  {
+    id: 'kuro-kanji-hoodie',
+    sku: 'ASM-STR-009',
+    name: 'Kuro Heavyweight Kanji Hoodie',
+    category: 'Streetwear',
+    origin: '420 GSM Washed Cotton',
+    priceMad: 290,
+    image: '/src/assets/images/product_anime_hoodie_1794897107062.jpg',
+    shortDesc:
+      'Dropped-shoulder charcoal fleece with raised crimson chest embroidery.',
+    description:
+      'Cut in an authentic Japanese streetwear boxy silhouette from 420 GSM French terry cotton. Features vintage mineral wash, double-lined hood, and crisp high-stitch crimson kanji embroidery that holds shape after washing.',
+    variants: ['Size M', 'Size L', 'Size XL'],
+    dimensions: 'Boxy Oversized Fit',
+    material: '100% Combed Cotton (420 GSM)',
+    stockCount: 11,
+    availabilityLabel: 'In Stock · Kenitra',
+  },
+  {
+    id: 'katana-sakura-lamp-set',
+    sku: 'ASM-DSK-031',
+    name: 'Mini Display Katana & Sakura Lamp',
+    category: 'Desk & Lamps',
+    origin: 'Curated Desk Pair',
+    priceMad: 260,
+    image: '/src/assets/images/product_katana_lamp_1794897107152.jpg',
+    shortDesc:
+      '25 cm alloy miniature katana with wooden stand and warm USB-C LED lamp.',
+    description:
+      'Built for anime desk setups and bookshelves. Pairs a blunt zinc-alloy matte black miniature katana on a walnut-stained cradle with a warm 3000K engraved acrylic Sakura & Fuji night lamp on solid oak.',
+    variants: ['Katana + Lamp Bundle', 'Lamp Only (Oak Base)', 'Mini Katana Only'],
+    dimensions: 'Katana 25 cm · Lamp 20 cm',
+    material: 'Zinc Alloy, Oak & Optical Acrylic',
+    stockCount: 8,
+    availabilityLabel: 'In Stock · Kenitra',
+  },
+  {
+    id: 'chi-long-mecha-desk-kit',
+    sku: 'ASM-CHN-042',
+    name: 'Chi-Long Mecha & 65% Custom Keyboard',
+    category: 'China Imports',
+    origin: 'Shenzhen Studio Import',
+    priceMad: 580,
+    image: '/src/assets/images/product_china_mech_desk_1794897107947.jpg',
+    shortDesc:
+      'Articulated crimson-gold mecha frame paired with hot-swap PBT keycaps.',
+    description:
+      'Flagship import from Shenzhen combining a pre-assembled articulated Chi-Long mecha display unit with an ivory-and-crimson 65% mechanical keyboard featuring dye-sublimated dragon legends and coiled aviator cable.',
+    variants: [
+      'Mecha + Keyboard Bundle',
+      'Mecha Figure Only',
+      '65% Keyboard Only',
+    ],
+    dimensions: 'Mecha 22 cm · 65% Layout',
+    material: 'ABS/Die-Cast Frame & PBT Keycaps',
+    stockCount: 3,
+    availabilityLabel: 'Low Stock · 3 Left',
+  },
+  {
+    id: 'kenitra-shelf-trio-bundle',
+    sku: 'ASM-FIG-055',
+    name: 'Collector Trio & Lacquer Katana Stand',
+    category: 'Anime Figures',
+    origin: 'Kenitra Boutique Pack',
+    priceMad: 690,
+    image: '/src/assets/images/hero_anime_showcase_1794897105447.jpg',
+    shortDesc:
+      'Three curated 18–22 cm anime figures plus full-size wooden stand display.',
+    description:
+      'Our signature room centerpiece curated in Kenitra. Combines three character figures from classic action and fantasy series alongside a matte-scabbard display blade on a sculpted hardwood cradle.',
+    variants: ['Complete 4-Piece Pack', '3 Figures Only'],
+    dimensions: 'Figures 18–22 cm · Blade 75 cm',
+    material: 'PVC Figures & Hardwood Display',
+    stockCount: 2,
+    availabilityLabel: '2 Packs Ready',
+  },
+];
+
+export const DEFAULT_STORE_PAYLOAD: StorePayload = {
+  settings: DEFAULT_SETTINGS,
+  products: DEFAULT_PRODUCTS,
+  deliveryZones: DEFAULT_DELIVERY_ZONES,
+  orders: [],
+};

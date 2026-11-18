@@ -1,0 +1,6 @@
+{
+  "name": "Anime Store MA — Kenitra",
+  "description": "Curated anime collectibles, streetwear, and Chinese imports in Kenitra, Morocco with Cash on Delivery nationwide.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
