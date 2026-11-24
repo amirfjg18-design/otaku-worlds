@@ -29,7 +29,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isVerifiedUser() && (
-        request.auth.token.email == 'amirfjg18@gmail.com' ||
+        request.auth.token.email == 'otakuwold1@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
