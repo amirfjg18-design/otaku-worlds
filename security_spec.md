@@ -1,7 +1,7 @@
 # Security Specification & Dirty Dozen Payloads (Phase 0)
 
 ## 1. Data Invariants
-1. **Admin-Only Storefront Mutations**: Only verified store admins (`otakuwold1@gmail.com` with `email_verified == true` or UIDs in `/admins/{uid}`) may create, update, or delete `/store/config`, `/storePrivate/{docId}`, `/products/{productId}`, or `/deliveryZones/{zoneId}`.
+1. **Admin-Only Storefront Mutations**: Only verified store admins (`otakuworlde1@gmail.com` with `email_verified == true` or UIDs in `/admins/{uid}`) may create, update, or delete `/store/config`, `/storePrivate/{docId}`, `/products/{productId}`, or `/deliveryZones/{zoneId}`.
 2. **Public Catalog Readability**: Shoppers (including unauthenticated Instagram visitors) can `get` `/store/config` and `get`/`list` `/products` and `/deliveryZones`, which contain zero PII.
 3. **Strict PII Isolation for Orders**: Customer orders in `/orders/{orderId}` contain PII (`customerName`, `phone`, `address`). Unauthenticated shoppers may only `create` a new order in `Pending` state with `createdAt == request.time`; `get`, `list`, `update`, and `delete` on `/orders` are strictly restricted to `isAdmin()`.
 4. **Schema & Size Guarding**: All string and list fields enforce `.size()` upper bounds, strict `hasAll`/`hasOnly` field allowlists, and regex-validated document IDs (`^[a-zA-Z0-9_\-]+$`).
